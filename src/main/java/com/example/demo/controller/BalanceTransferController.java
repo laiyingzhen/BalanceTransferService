@@ -16,7 +16,10 @@ import java.util.List;
 public class BalanceTransferController {
     @Autowired
     private UserService userService;
+    @Autowired
     private TransferService transferService;
+    public static final int DEFAULT_PAGE_NUMBER = 0;
+    public static final int DEFAULT_PAGE_SIZE = 10;
     @PostMapping("/users")
     public ResponseEntity<ApiResponse> createUser(@RequestBody User request){
         ApiResponse response = new ApiResponse();
@@ -56,6 +59,8 @@ public class BalanceTransferController {
          ApiResponse response = new ApiResponse();
          try {
              transferService.transferBalance(request.getFromUserId(), request.getToUserId(), request.getAmount());
+             response.setCode(ErrorCode.SUCCESS.getCode());
+             response.setMessage(ErrorCode.SUCCESS.getMessage());
          }catch(EntityNotFoundException ex) {
              response.setCode(ErrorCode.USER_NOT_EXIST.getCode());
              response.setMessage(ErrorCode.USER_NOT_EXIST.getMessage());
@@ -69,15 +74,33 @@ public class BalanceTransferController {
          return ResponseEntity.ok(response);
     }
     @GetMapping("/transfers")
-    public ResponseEntity<List<TransferHistory>> getTransferHistory(@RequestParam String userId, @RequestParam int pageIndex,@RequestParam int pageSize){
-        List<TransferHistory> transferListory = transferService.getTransferHistory(userId, pageIndex, pageSize);
-        return ResponseEntity.ok(transferListory);
+    public ResponseEntity<ApiResponse> getTransferHistory(@RequestParam String userId, @RequestParam(name = "pageNumber", required = false) Integer pageNumber, @RequestParam(name = "pageSize", required = false) Integer pageSize){
+        ApiResponse response = new ApiResponse();
+        if(pageNumber == null || pageSize == null){
+            pageNumber = DEFAULT_PAGE_NUMBER;
+            pageSize = DEFAULT_PAGE_SIZE;
+        }
+        try {
+            List<TransferHistory> transferListory = transferService.getTransferHistory(userId, pageNumber, pageSize);
+            response.setData(transferListory);
+            response.setCode(ErrorCode.SUCCESS.getCode());
+            response.setMessage(ErrorCode.SUCCESS.getMessage());
+        }catch(Exception ex){
+            response.setCode(ErrorCode.ERROR.getCode());
+            response.setMessage(ex.getMessage());
+        }
+        return ResponseEntity.ok(response);
     }
     @PostMapping("/transfers/{transferId}/cancel")
     public ResponseEntity<ApiResponse> cancelTransfer(@PathVariable String transferId){
         ApiResponse response = new ApiResponse();
         try {
             transferService.cancelTransfer(transferId);
+            response.setCode(ErrorCode.SUCCESS.getCode());
+            response.setMessage(ErrorCode.SUCCESS.getMessage());
+        }catch(EntityNotFoundException ex){
+            response.setCode(ErrorCode.TRANSFER_ID_ERROR.getCode());
+            response.setMessage(ErrorCode.TRANSFER_ID_ERROR.getMessage());
         }catch(UnsupportedOperationException ex){
             response.setCode(ErrorCode.NOT_ALLOW_CANCEL.getCode());
             response.setMessage(ErrorCode.NOT_ALLOW_CANCEL.getMessage());

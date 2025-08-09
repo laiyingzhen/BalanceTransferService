@@ -10,5 +10,5 @@ import java.util.List;
 @Repository
 public interface TransferHistoryRepository extends JpaRepository<TransferHistory,Long> {
     TransferHistory findByTransferId(String transferId);
-    List<TransferHistory> findByFromUserIdOrToUserId(String fromUserId, String toUserId, Pageable pageable);
+    List<TransferHistory> findAllByFromUserIdOrToUserId(String fromUserId, String toUserId, Pageable pageable);
 }

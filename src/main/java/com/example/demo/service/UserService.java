@@ -22,11 +22,11 @@ public class UserService {
         return userRepository.save(user);
     }
     public BigDecimal getUserBalance(String userId){
+        String value = redisTemplate.opsForValue().get(CURRENT_USER_BALANCE+userId);
+        if(value != null) return new BigDecimal(value);
         User user = userRepository.findByUserId(userId);
         if(user == null) throw new EntityNotFoundException();
         BigDecimal balance =  user.getBalance();
-        redisTemplate.opsForValue().set(CURRENT_USER_BALANCE+userId, balance.toString());
-        redisTemplate.expire(CURRENT_USER_BALANCE+userId, 10, TimeUnit.MINUTES);
         return balance;
     }
     public User getUser(String userId){
@@ -39,4 +39,11 @@ public class UserService {
     public User save(User user){
         return userRepository.save(user);
     }
+    public User updateUserBalance(String userId, BigDecimal amount){
+        User user = this.getUser(userId);
+        BigDecimal balance = user.getBalance();
+        BigDecimal afterBalance = balance.add(amount);
+        user.setBalance(afterBalance);
+        return this.save(user);
+     }
 }

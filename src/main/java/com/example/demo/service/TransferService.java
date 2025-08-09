@@ -4,15 +4,14 @@ import com.example.demo.model.TransferHistory;
 import com.example.demo.model.TransferType;
 import com.example.demo.model.User;
 import com.example.demo.repository.TransferHistoryRepository;
-import com.example.demo.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -33,16 +32,10 @@ public class TransferService {
     @Transactional
     public void transferBalance(String fromUserId, String toUserId, BigDecimal amount){
         if(amount.compareTo(BigDecimal.ZERO) < 0) throw new IllegalArgumentException();
-        User fromUser = userService.getUser(fromUserId);
-        User toUser = userService.getUser(toUserId);
-        BigDecimal fromUserAfterBalance = fromUser.getBalance().subtract(amount);
-        BigDecimal toUserAfterBalance = toUser.getBalance().add(amount);
-        fromUser.setBalance(fromUserAfterBalance);
-        toUser.setBalance(toUserAfterBalance);
-        userService.save(fromUser);
-        userService.save(toUser);
+        User fromUser = userService.updateUserBalance(fromUserId, amount.negate());
+        User toUser = userService.updateUserBalance(toUserId, amount);
         LocalDateTime now = LocalDateTime.now();
-        String transferId = generateTransferId(now);
+        String transferId = generateTransferId();
         TransferHistory history = new TransferHistory();
         history.setFromUserId(fromUser.getUserId());
         history.setToUserId(toUser.getUserId());
@@ -54,36 +47,28 @@ public class TransferService {
         redisTemplate.opsForValue().set(ALLOW_TRANSFER_KEY+transferId, transferId);
         redisTemplate.expire(ALLOW_TRANSFER_KEY, 10, TimeUnit.MINUTES);
     }
-    private String generateTransferId(LocalDateTime dateTime){
-        StringBuffer sb = new StringBuffer();
-        sb.append(dateTime.toString()).append(UUID.randomUUID());
-        return sb.toString();
+
+    private String generateTransferId(){
+        return UUID.randomUUID().toString();
     }
     @Transactional
     public void cancelTransfer(String transferId){
         TransferHistory transferHistory = transferHistoryRepository.findByTransferId(transferId);
+        if(transferHistory == null) throw new EntityNotFoundException();
         if(isAllowCancel(transferId)){
             String fromUserId = transferHistory.getFromUserId();
             String toUserId = transferHistory.getToUserId();
             BigDecimal amount = transferHistory.getAmount();
 
-            User fromUser = userService.getUser(fromUserId);
-            BigDecimal fromUserBalance = fromUser.getBalance();
-            User toUser = userService.getUser(toUserId);
-            BigDecimal toUserBalance = toUser.getBalance();
-            BigDecimal fromUserAfterBalance = fromUserBalance.add(amount);
-            BigDecimal toUserAfterBalance = toUserBalance.subtract(amount);
-            fromUser.setBalance(fromUserAfterBalance);
-            toUser.setBalance(toUserAfterBalance);
-            userService.save(fromUser);
-            userService.save(toUser);
+            User fromUser = userService.updateUserBalance(fromUserId, amount);
+            User toUser = userService.updateUserBalance(toUserId, amount.negate());
             LocalDateTime now = LocalDateTime.now();
             TransferHistory history = new TransferHistory();
             history.setFromUserId(fromUser.getUserId());
             history.setToUserId(toUser.getUserId());
             history.setAmount(amount);
             history.setTransferTime(now);
-            history.setTransferId(generateTransferId(now));
+            history.setTransferId(generateTransferId());
             history.setTransferType(TransferType.CANCEL.name());
             transferHistoryRepository.save(history);
             redisTemplate.delete(ALLOW_TRANSFER_KEY+transferId);
@@ -96,8 +81,9 @@ public class TransferService {
         if(value == null) return false;
         return true;
     }
-    public List<TransferHistory> getTransferHistory(String userId, int pageIndex, int pageSize){
-        Pageable sortedPageable = PageRequest.of(pageIndex, pageSize, Sort.by("transferTime").descending());
-        return transferHistoryRepository.findByFromUserIdOrToUserId(userId, userId, sortedPageable);
+    public List<TransferHistory> getTransferHistory(String userId, int pageNumber, int pageSize){
+        Pageable pageable = PageRequest.of(pageNumber, pageSize, Sort.by("transferTime").descending());
+        List<TransferHistory> list = transferHistoryRepository.findAllByFromUserIdOrToUserId(userId, userId, pageable);
+        return list;
     }
 }
