@@ -1,0 +1,35 @@
+spring:
+  application:
+    name: demo
+
+# define mysql properties here
+  datasource:
+    url: jdbc:mysql://localhost:3306/taskdb?allowPublicKeyRetrieval=true&useSSL=false
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: taskuser
+    password: taskpass
+
+
+# Hibernate ddl auto (create, create-drop, validate, update)
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: create
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+# define redis properties here
+  redis:
+    database: 0
+    host: localhost
+    port: 6379
+    password:
+    jedis:
+      pool:
+        max-active: 8
+        max-wait: -1
+        max-idle: 8
+        min-idle: 0
+    timeout: 5000
+
+# define rocketmq properties here
