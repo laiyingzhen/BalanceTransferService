@@ -16,6 +16,14 @@ public class User {
     private BigDecimal initialBalance;
     @Column(name="balance")
     private BigDecimal balance;
+    public User(){
+
+    }
+    public User(String userId, BigDecimal initialBalance, BigDecimal balance){
+        this.userId = userId;
+        this.initialBalance = initialBalance;
+        this.balance = balance;
+    }
 
     public String getUserId() {
         return userId;

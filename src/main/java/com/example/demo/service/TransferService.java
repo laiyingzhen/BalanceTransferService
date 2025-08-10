@@ -48,7 +48,7 @@ public class TransferService {
         redisTemplate.expire(ALLOW_TRANSFER_KEY, 10, TimeUnit.MINUTES);
     }
 
-    private String generateTransferId(){
+    String generateTransferId(){
         return UUID.randomUUID().toString();
     }
     @Transactional
@@ -76,7 +76,7 @@ public class TransferService {
             throw new UnsupportedOperationException();
         }
     }
-    private boolean isAllowCancel(String transferId){
+    boolean isAllowCancel(String transferId){
         String value = redisTemplate.opsForValue().get(ALLOW_TRANSFER_KEY+transferId);
         if(value == null) return false;
         return true;
